@@ -7,6 +7,7 @@ import { LanguageToggle } from "@/components/language-toggle"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/components/language-provider"
 import { useAuth } from "@/components/auth-provider"
+import { useSubscription } from "@/components/subscription-provider"
 import {
   LayoutDashboard,
   MessageCircle,
@@ -18,6 +19,9 @@ import {
   LogOut,
   Brain,
   TestTube,
+  Camera,
+  Shield,
+  Crown,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -28,20 +32,25 @@ interface SidebarProps {
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { t, isRTL } = useLanguage()
   const { user, logout } = useAuth()
+  const { tier, isTrialActive, daysRemaining } = useSubscription()
 
   const menuItems = [
     { id: "dashboard", icon: LayoutDashboard, label: t("nav.dashboard") },
     { id: "chat", icon: MessageCircle, label: t("nav.chat") },
     { id: "mood", icon: Heart, label: t("nav.mood") },
+    { id: "live-mood", icon: Camera, label: "Live Mood Detection", isPremium: tier === "free" },
     { id: "journal", icon: BookOpen, label: t("nav.journal") },
     { id: "therapists", icon: Calendar, label: t("nav.therapists") },
     { id: "community", icon: Users, label: t("nav.community") },
     { id: "settings", icon: Settings, label: t("nav.settings") },
   ]
 
-  // Add API test menu item only in development
+  // Add development menu items only in development
   if (process.env.NODE_ENV === "development") {
-    menuItems.push({ id: "api-test", icon: TestTube, label: "API Tests" })
+    menuItems.push(
+      { id: "camera-test", icon: Shield, label: "Camera Verification" },
+      { id: "api-test", icon: TestTube, label: "API Tests" },
+    )
   }
 
   return (
@@ -67,19 +76,21 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => (
-            <Button
-              key={item.id}
-              variant={activeView === item.id ? "default" : "ghost"}
-              className={`w-full justify-start space-x-3 ${
-                activeView === item.id ? "bg-gradient-to-r from-blue-500 to-green-500 text-white" : "hover:bg-muted"
-              }`}
-              onClick={() => onViewChange(item.id)}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </Button>
+            <div key={item.id} className="relative">
+              <Button
+                variant={activeView === item.id ? "default" : "ghost"}
+                className={`w-full justify-start space-x-3 ${
+                  activeView === item.id ? "bg-gradient-to-r from-blue-500 to-green-500 text-white" : "hover:bg-muted"
+                }`}
+                onClick={() => onViewChange(item.id)}
+              >
+                <item.icon className="w-5 h-5" />
+                <span>{item.label}</span>
+                {item.isPremium && <Crown className="w-3 h-3 text-yellow-500 ml-auto" />}
+              </Button>
+            </div>
           ))}
         </nav>
 
@@ -100,6 +111,21 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
             <LanguageToggle />
             <ThemeToggle />
           </div>
+
+          {/* Subscription Status */}
+          {tier !== "free" && (
+            <div className="mb-3 p-2 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center space-x-2">
+                <Crown className="w-4 h-4 text-purple-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-purple-800 dark:text-purple-200 capitalize">{tier} Plan</p>
+                  {isTrialActive && (
+                    <p className="text-xs text-purple-600 dark:text-purple-400">Trial: {daysRemaining} days left</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <Button variant="outline" size="sm" className="w-full" onClick={logout}>
             <LogOut className="w-4 h-4 mr-2" />

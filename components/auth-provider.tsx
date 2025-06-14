@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
+import { SubscriptionProvider } from "@/components/subscription-provider"
 
 interface User {
   id: string
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
       }}
     >
-      {children}
+      <SubscriptionProvider>{children}</SubscriptionProvider>
     </AuthContext.Provider>
   )
 }

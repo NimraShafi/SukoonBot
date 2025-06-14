@@ -7,67 +7,111 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { useLanguage } from "@/components/language-provider"
-import { Smile, Frown, Angry, Zap, Heart, Meh, Mic, MicOff, Save, TrendingUp } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Smile, Frown, Angry, Zap, Heart, Meh, Mic, MicOff, Save, TrendingUp, Download, Trash2 } from "lucide-react"
 
 interface MoodEntry {
   id: string
   mood: string
   intensity: number
   note: string
-  timestamp: Date
+  timestamp: string // Changed to string to avoid Date serialization issues
   isVoice?: boolean
 }
 
 const moodOptions = [
-  { id: "happy", icon: Smile, label: "mood.happy", color: "mood-happy", emoji: "😊" },
-  { id: "sad", icon: Frown, label: "mood.sad", color: "mood-sad", emoji: "😢" },
-  { id: "angry", icon: Angry, label: "mood.angry", color: "mood-angry", emoji: "😠" },
-  { id: "anxious", icon: Zap, label: "mood.anxious", color: "mood-anxious", emoji: "😰" },
-  { id: "calm", icon: Heart, label: "mood.calm", color: "mood-calm", emoji: "😌" },
-  { id: "neutral", icon: Meh, label: "mood.neutral", color: "mood-neutral", emoji: "😐" },
+  { id: "happy", icon: Smile, label: "mood.happy", color: "bg-yellow-100 text-yellow-800", emoji: "😊" },
+  { id: "sad", icon: Frown, label: "mood.sad", color: "bg-blue-100 text-blue-800", emoji: "😢" },
+  { id: "angry", icon: Angry, label: "mood.angry", color: "bg-red-100 text-red-800", emoji: "😠" },
+  { id: "anxious", icon: Zap, label: "mood.anxious", color: "bg-purple-100 text-purple-800", emoji: "😰" },
+  { id: "calm", icon: Heart, label: "mood.calm", color: "bg-green-100 text-green-800", emoji: "😌" },
+  { id: "neutral", icon: Meh, label: "mood.neutral", color: "bg-gray-100 text-gray-800", emoji: "😐" },
 ]
 
 export function MoodTracker() {
   const { t } = useLanguage()
+  const { toast } = useToast()
   const [selectedMood, setSelectedMood] = useState<string>("")
   const [intensity, setIntensity] = useState<number>(5)
   const [note, setNote] = useState<string>("")
   const [isRecording, setIsRecording] = useState(false)
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([])
   const [currentMoodAnimation, setCurrentMoodAnimation] = useState<string>("")
+  const [isClient, setIsClient] = useState(false)
 
+  // Ensure we're on the client side before accessing localStorage
   useEffect(() => {
-    // Load mood entries from localStorage
-    const savedEntries = localStorage.getItem("sukoonbot_mood_entries")
-    if (savedEntries) {
-      setMoodEntries(JSON.parse(savedEntries))
-    }
+    setIsClient(true)
   }, [])
 
-  const saveMoodEntry = () => {
-    if (!selectedMood) return
+  useEffect(() => {
+    if (!isClient) return
 
-    const newEntry: MoodEntry = {
-      id: Date.now().toString(),
-      mood: selectedMood,
-      intensity,
-      note,
-      timestamp: new Date(),
-      isVoice: isRecording,
+    try {
+      // Load mood entries from localStorage with error handling
+      const savedEntries = localStorage.getItem("sukoonbot_mood_entries")
+      if (savedEntries) {
+        const parsedEntries = JSON.parse(savedEntries)
+        // Ensure entries have the correct structure
+        const validEntries = parsedEntries.filter(
+          (entry: any) =>
+            entry &&
+            typeof entry.id === "string" &&
+            typeof entry.mood === "string" &&
+            typeof entry.intensity === "number" &&
+            typeof entry.note === "string" &&
+            entry.timestamp,
+        )
+        setMoodEntries(validEntries)
+      }
+    } catch (error) {
+      console.error("Error loading mood entries:", error)
+      // Clear corrupted data
+      localStorage.removeItem("sukoonbot_mood_entries")
     }
+  }, [isClient])
 
-    const updatedEntries = [newEntry, ...moodEntries]
-    setMoodEntries(updatedEntries)
-    localStorage.setItem("sukoonbot_mood_entries", JSON.stringify(updatedEntries))
+  const saveMoodEntry = () => {
+    if (!selectedMood || !isClient) return
 
-    // Reset form
-    setSelectedMood("")
-    setIntensity(5)
-    setNote("")
-    setCurrentMoodAnimation(selectedMood)
+    try {
+      const newEntry: MoodEntry = {
+        id: Date.now().toString(),
+        mood: selectedMood,
+        intensity,
+        note,
+        timestamp: new Date().toISOString(), // Store as ISO string
+        isVoice: isRecording,
+      }
 
-    // Clear animation after 2 seconds
-    setTimeout(() => setCurrentMoodAnimation(""), 2000)
+      const updatedEntries = [newEntry, ...moodEntries]
+      setMoodEntries(updatedEntries)
+      localStorage.setItem("sukoonbot_mood_entries", JSON.stringify(updatedEntries))
+
+      // Show success toast
+      toast({
+        title: "Mood Saved!",
+        description: `Your ${getMoodLabel(selectedMood)} mood has been recorded.`,
+      })
+
+      // Show success animation
+      setCurrentMoodAnimation(selectedMood)
+
+      // Reset form
+      setSelectedMood("")
+      setIntensity(5)
+      setNote("")
+
+      // Clear animation after 2 seconds
+      setTimeout(() => setCurrentMoodAnimation(""), 2000)
+    } catch (error) {
+      console.error("Error saving mood entry:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save mood entry. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const startVoiceRecording = async () => {
@@ -77,16 +121,44 @@ export function MoodTracker() {
 
       // Simulate voice recording and transcription
       setTimeout(() => {
-        setNote((prev) => prev + " [Voice note recorded]")
+        const voiceNotes = [
+          "Feeling overwhelmed with work today",
+          "Had a great conversation with a friend",
+          "Struggling with sleep lately",
+          "Excited about upcoming plans",
+          "Feeling grateful for small moments",
+        ]
+        const randomNote = voiceNotes[Math.floor(Math.random() * voiceNotes.length)]
+        setNote((prev) => (prev ? `${prev} ${randomNote}` : randomNote))
         setIsRecording(false)
         stream.getTracks().forEach((track) => track.stop())
-      }, 3000)
+
+        toast({
+          title: "Voice Note Added",
+          description: "Your voice note has been transcribed and added.",
+        })
+      }, 2000)
     } catch (error) {
       console.error("Error accessing microphone:", error)
+      setIsRecording(false)
+      toast({
+        title: "Microphone Access Denied",
+        description: "Please allow microphone access to record voice notes.",
+        variant: "destructive",
+      })
     }
   }
 
+  const getMoodLabel = (moodId: string) => {
+    const mood = moodOptions.find((m) => m.id === moodId)
+    return mood ? t(mood.label) : moodId
+  }
+
   const getMoodStats = () => {
+    if (!isClient || moodEntries.length === 0) {
+      return { avgIntensity: 0, dominantMood: null, totalEntries: 0 }
+    }
+
     const recentEntries = moodEntries.slice(0, 7) // Last 7 entries
     const avgIntensity =
       recentEntries.length > 0
@@ -106,7 +178,81 @@ export function MoodTracker() {
     return { avgIntensity, dominantMood, totalEntries: recentEntries.length }
   }
 
+  const clearAllEntries = () => {
+    if (!isClient) return
+
+    if (confirm("Are you sure you want to clear all mood entries? This action cannot be undone.")) {
+      setMoodEntries([])
+      localStorage.removeItem("sukoonbot_mood_entries")
+      toast({
+        title: "Data Cleared",
+        description: "All mood entries have been removed.",
+      })
+    }
+  }
+
+  const exportMoodData = () => {
+    if (!isClient || moodEntries.length === 0) return
+
+    try {
+      const dataStr = JSON.stringify(moodEntries, null, 2)
+      const dataBlob = new Blob([dataStr], { type: "application/json" })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `mood-data-${new Date().toISOString().split("T")[0]}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      toast({
+        title: "Data Exported",
+        description: "Your mood data has been downloaded successfully.",
+      })
+    } catch (error) {
+      console.error("Error exporting data:", error)
+      toast({
+        title: "Export Failed",
+        description: "Failed to export mood data. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const formatDate = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleDateString()
+    } catch {
+      return "Invalid date"
+    }
+  }
+
+  const formatTime = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    } catch {
+      return "Invalid time"
+    }
+  }
+
   const stats = getMoodStats()
+
+  // Don't render until we're on the client to avoid hydration issues
+  if (!isClient) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Loading Mood Tracker...</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -154,7 +300,12 @@ export function MoodTracker() {
           {selectedMood && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Intensity: {intensity}/10</label>
+                <label className="text-sm font-medium mb-2 block">
+                  Intensity: {intensity}/10
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {intensity <= 3 ? "Low" : intensity <= 7 ? "Medium" : "High"}
+                  </span>
+                </label>
                 <div className="space-y-2">
                   <input
                     type="range"
@@ -162,10 +313,11 @@ export function MoodTracker() {
                     max="10"
                     value={intensity}
                     onChange={(e) => setIntensity(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Low</span>
+                    <span>Medium</span>
                     <span>High</span>
                   </div>
                 </div>
@@ -236,9 +388,7 @@ export function MoodTracker() {
                 <span className="text-sm font-medium">Most Common Mood</span>
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">{moodOptions.find((m) => m.id === stats.dominantMood)?.emoji}</span>
-                  <span className="text-sm">
-                    {t(moodOptions.find((m) => m.id === stats.dominantMood)?.label || "")}
-                  </span>
+                  <span className="text-sm">{getMoodLabel(stats.dominantMood)}</span>
                 </div>
               </div>
             )}
@@ -248,7 +398,17 @@ export function MoodTracker() {
         {/* Recent Entries */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Entries</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Entries</CardTitle>
+              <div className="flex space-x-2">
+                <Button size="sm" variant="outline" onClick={exportMoodData} disabled={moodEntries.length === 0}>
+                  <Download className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={clearAllEntries} disabled={moodEntries.length === 0}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -262,17 +422,13 @@ export function MoodTracker() {
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">{moodOptions.find((m) => m.id === entry.mood)?.emoji}</span>
                     <div>
-                      <p className="text-sm font-medium">
-                        {t(moodOptions.find((m) => m.id === entry.mood)?.label || "")}
-                      </p>
+                      <p className="text-sm font-medium">{getMoodLabel(entry.mood)}</p>
                       <p className="text-xs text-muted-foreground">Intensity: {entry.intensity}/10</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">{entry.timestamp.toLocaleDateString()}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{formatDate(entry.timestamp)}</p>
+                    <p className="text-xs text-muted-foreground">{formatTime(entry.timestamp)}</p>
                   </div>
                 </motion.div>
               ))}

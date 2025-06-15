@@ -15,7 +15,7 @@ interface MoodEntry {
   mood: string
   intensity: number
   note: string
-  timestamp: string // Changed to string to avoid Date serialization issues
+  timestamp: string
   isVoice?: boolean
 }
 
@@ -39,7 +39,6 @@ export function MoodTracker() {
   const [currentMoodAnimation, setCurrentMoodAnimation] = useState<string>("")
   const [isClient, setIsClient] = useState(false)
 
-  // Ensure we're on the client side before accessing localStorage
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -48,11 +47,9 @@ export function MoodTracker() {
     if (!isClient) return
 
     try {
-      // Load mood entries from localStorage with error handling
       const savedEntries = localStorage.getItem("sukoonbot_mood_entries")
       if (savedEntries) {
         const parsedEntries = JSON.parse(savedEntries)
-        // Ensure entries have the correct structure
         const validEntries = parsedEntries.filter(
           (entry: any) =>
             entry &&
@@ -66,7 +63,6 @@ export function MoodTracker() {
       }
     } catch (error) {
       console.error("Error loading mood entries:", error)
-      // Clear corrupted data
       localStorage.removeItem("sukoonbot_mood_entries")
     }
   }, [isClient])
@@ -80,7 +76,7 @@ export function MoodTracker() {
         mood: selectedMood,
         intensity,
         note,
-        timestamp: new Date().toISOString(), // Store as ISO string
+        timestamp: new Date().toISOString(),
         isVoice: isRecording,
       }
 
@@ -88,21 +84,16 @@ export function MoodTracker() {
       setMoodEntries(updatedEntries)
       localStorage.setItem("sukoonbot_mood_entries", JSON.stringify(updatedEntries))
 
-      // Show success toast
       toast({
         title: "Mood Saved!",
         description: `Your ${getMoodLabel(selectedMood)} mood has been recorded.`,
       })
 
-      // Show success animation
       setCurrentMoodAnimation(selectedMood)
-
-      // Reset form
       setSelectedMood("")
       setIntensity(5)
       setNote("")
 
-      // Clear animation after 2 seconds
       setTimeout(() => setCurrentMoodAnimation(""), 2000)
     } catch (error) {
       console.error("Error saving mood entry:", error)
@@ -119,7 +110,6 @@ export function MoodTracker() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       setIsRecording(true)
 
-      // Simulate voice recording and transcription
       setTimeout(() => {
         const voiceNotes = [
           "Feeling overwhelmed with work today",
@@ -159,7 +149,7 @@ export function MoodTracker() {
       return { avgIntensity: 0, dominantMood: null, totalEntries: 0 }
     }
 
-    const recentEntries = moodEntries.slice(0, 7) // Last 7 entries
+    const recentEntries = moodEntries.slice(0, 7)
     const avgIntensity =
       recentEntries.length > 0
         ? recentEntries.reduce((sum, entry) => sum + entry.intensity, 0) / recentEntries.length
@@ -236,17 +226,16 @@ export function MoodTracker() {
 
   const stats = getMoodStats()
 
-  // Don't render until we're on the client to avoid hydration issues
   if (!isClient) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Loading Mood Tracker...</CardTitle>
+            <CardTitle className="text-center text-base sm:text-lg">Loading Mood Tracker...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500"></div>
             </div>
           </CardContent>
         </Card>
@@ -255,22 +244,22 @@ export function MoodTracker() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Current Mood Selector */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-center">{t("dashboard.mood.title")}</CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-center text-lg sm:text-xl">{t("dashboard.mood.title")}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 sm:space-y-6">
           {/* Mood Animation Display */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4 sm:mb-6">
             <AnimatePresence>
               {currentMoodAnimation && (
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 180 }}
-                  className="text-8xl"
+                  className="text-6xl sm:text-8xl"
                 >
                   {moodOptions.find((m) => m.id === currentMoodAnimation)?.emoji}
                 </motion.div>
@@ -279,18 +268,18 @@ export function MoodTracker() {
           </div>
 
           {/* Mood Options */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             {moodOptions.map((mood) => (
-              <motion.div key={mood.id} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div key={mood.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   variant={selectedMood === mood.id ? "default" : "outline"}
-                  className={`h-20 w-full flex flex-col items-center space-y-2 ${
+                  className={`h-16 sm:h-20 w-full flex flex-col items-center justify-center space-y-1 sm:space-y-2 tap-target ${
                     selectedMood === mood.id ? mood.color : ""
                   }`}
                   onClick={() => setSelectedMood(mood.id)}
                 >
-                  <span className="text-2xl">{mood.emoji}</span>
-                  <span className="text-sm font-medium">{t(mood.label)}</span>
+                  <span className="text-xl sm:text-2xl">{mood.emoji}</span>
+                  <span className="text-xs sm:text-sm font-medium">{t(mood.label)}</span>
                 </Button>
               </motion.div>
             ))}
@@ -331,12 +320,12 @@ export function MoodTracker() {
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="How are you feeling? What's on your mind?"
-                    className="min-h-[100px]"
+                    className="min-h-[80px] sm:min-h-[100px] pr-12"
                   />
                   <Button
                     size="sm"
                     variant={isRecording ? "destructive" : "outline"}
-                    className="absolute bottom-2 right-2"
+                    className="absolute bottom-2 right-2 tap-target"
                     onClick={isRecording ? () => setIsRecording(false) : startVoiceRecording}
                   >
                     {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -347,7 +336,7 @@ export function MoodTracker() {
               {/* Save Button */}
               <Button
                 onClick={saveMoodEntry}
-                className="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
+                className="w-full bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 tap-target"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {t("dashboard.mood.track")}
@@ -358,17 +347,17 @@ export function MoodTracker() {
       </Card>
 
       {/* Mood Statistics */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center space-x-2 text-base sm:text-lg">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Weekly Overview</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4">
             <div>
-              <div className="flex justify-between text-sm mb-2">
+              <div className="flex justify-between text-xs sm:text-sm mb-2">
                 <span>Average Intensity</span>
                 <span>{stats.avgIntensity.toFixed(1)}/10</span>
               </div>
@@ -376,7 +365,7 @@ export function MoodTracker() {
             </div>
 
             <div>
-              <div className="flex justify-between text-sm mb-2">
+              <div className="flex justify-between text-xs sm:text-sm mb-2">
                 <span>Entries This Week</span>
                 <span>{stats.totalEntries}</span>
               </div>
@@ -385,10 +374,12 @@ export function MoodTracker() {
 
             {stats.dominantMood && (
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <span className="text-sm font-medium">Most Common Mood</span>
+                <span className="text-xs sm:text-sm font-medium">Most Common Mood</span>
                 <div className="flex items-center space-x-2">
-                  <span className="text-lg">{moodOptions.find((m) => m.id === stats.dominantMood)?.emoji}</span>
-                  <span className="text-sm">{getMoodLabel(stats.dominantMood)}</span>
+                  <span className="text-base sm:text-lg">
+                    {moodOptions.find((m) => m.id === stats.dominantMood)?.emoji}
+                  </span>
+                  <span className="text-xs sm:text-sm">{getMoodLabel(stats.dominantMood)}</span>
                 </div>
               </div>
             )}
@@ -397,21 +388,33 @@ export function MoodTracker() {
 
         {/* Recent Entries */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <div className="flex items-center justify-between">
-              <CardTitle>Recent Entries</CardTitle>
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline" onClick={exportMoodData} disabled={moodEntries.length === 0}>
-                  <Download className="w-4 h-4" />
+              <CardTitle className="text-base sm:text-lg">Recent Entries</CardTitle>
+              <div className="flex space-x-1 sm:space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportMoodData}
+                  disabled={moodEntries.length === 0}
+                  className="tap-target"
+                >
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
-                <Button size="sm" variant="outline" onClick={clearAllEntries} disabled={moodEntries.length === 0}>
-                  <Trash2 className="w-4 h-4" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={clearAllEntries}
+                  disabled={moodEntries.length === 0}
+                  className="tap-target"
+                >
+                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+            <div className="space-y-3 max-h-64 overflow-y-auto scroll-smooth-mobile">
               {moodEntries.slice(0, 5).map((entry) => (
                 <motion.div
                   key={entry.id}
@@ -420,9 +423,9 @@ export function MoodTracker() {
                   className="flex items-center justify-between p-3 bg-muted rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{moodOptions.find((m) => m.id === entry.mood)?.emoji}</span>
+                    <span className="text-lg sm:text-2xl">{moodOptions.find((m) => m.id === entry.mood)?.emoji}</span>
                     <div>
-                      <p className="text-sm font-medium">{getMoodLabel(entry.mood)}</p>
+                      <p className="text-xs sm:text-sm font-medium">{getMoodLabel(entry.mood)}</p>
                       <p className="text-xs text-muted-foreground">Intensity: {entry.intensity}/10</p>
                     </div>
                   </div>
@@ -434,9 +437,9 @@ export function MoodTracker() {
               ))}
 
               {moodEntries.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Heart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No mood entries yet. Start tracking your emotions!</p>
+                <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                  <Heart className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">No mood entries yet. Start tracking your emotions!</p>
                 </div>
               )}
             </div>

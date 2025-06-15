@@ -128,8 +128,7 @@ export function AIChat() {
     setIsTyping(true)
 
     try {
-      // Add a more realistic typing delay
-      const typingDelay = Math.min(content.length * 50, 3000) // 50ms per character, max 3 seconds
+      const typingDelay = Math.min(content.length * 50, 3000)
 
       setTimeout(
         async () => {
@@ -162,7 +161,7 @@ export function AIChat() {
           }
         },
         Math.max(typingDelay, 1000),
-      ) // Minimum 1 second delay
+      )
     } catch (error) {
       setIsTyping(false)
     }
@@ -181,7 +180,6 @@ export function AIChat() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/wav" })
-        // Simulate speech-to-text transcription
         const transcriptions = {
           ur: [
             "میں آج بہت پریشان محسوس کر رہا ہوں",
